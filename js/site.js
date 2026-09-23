@@ -36,24 +36,26 @@ revealables.forEach(function (el) { el.classList.add("in"); });
 }
 var rot = $(".rot-w");
 if (rot) {
-var words = $$(".rot-i", rot), ri = 0, rtimer = null;
+var words = $$(".rot-i", rot), ri = 0, rtimer = null, hero = rot.closest(".hero") || rot.parentNode;
 words[0].classList.add("on");
+var stop = function () { clearInterval(rtimer); rtimer = null; };
 var step = function () {
 var cur = words[ri]; ri = (ri + 1) % words.length; var nxt = words[ri];
 cur.classList.remove("on"); cur.classList.add("off");
 nxt.classList.remove("off"); nxt.classList.add("on");
 setTimeout(function () { cur.classList.remove("off"); }, 600);
+if (ri === 0) stop();  /* one pass, then rest on the first phrase (WCAG 2.2.2) */
 };
 var play = function () { if (!rtimer && !reduce) rtimer = setInterval(step, 2300); };
-var stop = function () { clearInterval(rtimer); rtimer = null; };
 play();
-rot.parentNode.addEventListener("mouseenter", stop);
-rot.parentNode.addEventListener("mouseleave", play);
-d.addEventListener("visibilitychange", function () { if (d.hidden) stop(); else play(); });
+hero.addEventListener("mouseenter", play);
+hero.addEventListener("focusin", play);
+d.addEventListener("visibilitychange", function () { if (d.hidden) stop(); });
 }
+$$(".mq").forEach(function (m) { m.addEventListener("click", function () { m.classList.toggle("paused"); }); });
 var BEAN = '<svg viewBox="0 0 80 62.23" aria-hidden="true"><use href="#s-bean"/></svg>';
 var HEART = '<svg viewBox="0 0 24 20" aria-hidden="true"><path d="M12 19.5S1 13 1 6.4A5.4 5.4 0 0 1 12 4.3a5.4 5.4 0 0 1 11 2.1C23 13 12 19.5 12 19.5z"/></svg>';
-var COLORS = ["#C63A33", "#F0C93A", "#2F7A4E", "#2B7FC0", "#9A6841"];
+var COLORS = ["#C63A33", "#F0C93A", "#2F7A4E", "#2572B0", "#875834"];
 function burst(x, y, kind, n) {
 if (reduce || !Element.prototype.animate) return;
 for (var i = 0; i < n; i++) {
@@ -75,6 +77,8 @@ el.animate([
 }
 }
 function centerOf(el) { var r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
+var firstKiss = $("[data-kiss]");
+if (firstKiss && !reduce) setTimeout(function () { var r = firstKiss.getBoundingClientRect(); if (r.bottom > 0 && r.top < innerHeight) burst(r.left + r.width / 2, r.top + r.height * .4, "heart", 6); }, 2700);
 $$("[data-kiss]").forEach(function (b) {
 b.addEventListener("click", function (e) { var c = e.clientX ? [e.clientX, e.clientY] : centerOf(b); burst(c[0], c[1], "heart", 9); });
 });
@@ -193,7 +197,7 @@ var chip = $("[data-status]", card), st = status(l.week);
 card.dataset.open = st && st.open ? "1" : "0";
 if (!chip || !st) return;
 chip.classList.toggle("open", st.open); chip.classList.toggle("closed", !st.open);
-chip.textContent = st.open ? S.lok_otvoreno.replace("{t}", st.until >= 1440 && st.until % 1440 === 0 ? "00:00" : hm(st.until))
+chip.textContent = st.open ? (st.until === 1440 ? S.lok_otvoreno_ponoc : S.lok_otvoreno.replace("{t}", hm(st.until)))
 : (st.at != null ? S.lok_zatvoreno.replace("{t}", hm(st.at)) : S.lok_zatvoreno_dan);
 });
 }
@@ -238,7 +242,7 @@ $$(".dot").forEach(function (dt) {
 var card = d.getElementById(dt.dataset.id);
 dt.addEventListener("mouseenter", function () { if (card) card.classList.add("hl"); });
 dt.addEventListener("mouseleave", function () { if (card) card.classList.remove("hl"); });
-if (!$("[data-lks]")) dt.setAttribute("href", locPath + "#" + dt.dataset.id);
+if (dt.tagName.toLowerCase() === "a" && window.matchMedia && window.matchMedia("(max-width: 880px)").matches) { dt.setAttribute("tabindex", "-1"); dt.setAttribute("aria-hidden", "true"); }
 });
 $$(".lk").forEach(function (c) {
 var dot = $('.dot[data-id="' + c.id + '"]');
@@ -291,6 +295,10 @@ chips.forEach(function (c) { var on = c.getAttribute("href") === "#" + e.target.
 });
 }, { rootMargin: "-30% 0px -60% 0px" });
 secs.forEach(function (s) { cio.observe(s); });
+var rail = chips.length ? chips[0].parentNode.parentNode : null;
+window.addEventListener("scroll", function () {
+if (secs.length && window.scrollY < secs[0].offsetTop - innerHeight * .45) { chips.forEach(function (c) { c.classList.remove("cur"); }); if (rail && rail.scrollLeft) rail.scrollLeft = 0; }
+}, { passive: true });
 }
 }
 var tl = $("[data-tl]");
